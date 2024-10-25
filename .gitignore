@@ -1,0 +1,50 @@
+# 빌드 디렉터리
+/build/
+/cmake-build-debug/
+
+# CMake 파일
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+Testing/
+CTestTestfile.cmake
+
+# 빌드 시스템 파일
+*.ninja
+rules.ninja
+*.obj
+*.o
+*.dll
+*.so
+*.dylib
+*.a
+*.out
+*.log
+
+# IDE 설정 파일 (CLion, JetBrains)
+/.idea/
+/.vscode/
+/*.iml
+
+# MacOS 관련 파일
+.DS_Store
+*.dSYM/
+
+# 바이너리 파일
+*.bin
+*.elf
+*.map
+*.hex
+
+# 임시 파일
+*.tmp
+*.swp
+*~
+
+# 실행 파일
+./pe_parser
+
+# Git
+.gitmessage.txt
