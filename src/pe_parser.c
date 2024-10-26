@@ -76,6 +76,15 @@ int main() {
            dosHeader.e_res2[8], dosHeader.e_res2[9]);
     printf("e_lfanew     : 0x%X\n", dosHeader.e_lfanew);         // PE 헤더의 파일 오프셋
 
+    // DOS Stub 정보 출력
+    int dosStubSize = dosHeader.e_lfanew - sizeof(IMAGE_DOS_HEADER); // DOS Stub의 크기
+
+    printf("\n*******************\n");
+    printf("*  DOS Stub의 정보  *\n");
+    printf("*******************\n");
+
+    printf("DOS Stub의 크기: %d 바이트\n", dosStubSize);
+
     fclose(peFile);
 
     return 0;
