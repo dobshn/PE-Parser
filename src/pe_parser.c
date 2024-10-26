@@ -210,6 +210,29 @@ int main() {
     printf("Size of Optional Header : %u\n", fileHeader.SizeOfOptionalHeader);   // Optional Header 크기
     printf("Characteristics         : 0x%X\n", fileHeader.Characteristics);      // 파일 속성
 
+    // 32비트와 64비트에 따라 Optional Header 처리
+    if (fileHeader.SizeOfOptionalHeader > 0) {
+        uint16_t magic;
+        fread(&magic, sizeof(magic), 1, peFile);
+        fseek(peFile, -sizeof(magic), SEEK_CUR); // Optional Header 전체를 다시 읽기 위해 포인터 되돌림
+
+        if (magic == 0x10B) {
+            IMAGE_NT_HEADERS32 ntHeaders32;
+            fseek(peFile, dosHeader.e_lfanew, SEEK_SET);
+            fread(&ntHeaders32, sizeof(IMAGE_NT_HEADERS32), 1, peFile);
+            printf("이 파일은 32비트 PE 파일입니다.\n");
+            printf("Magic: 0x%X\n", ntHeaders32.OptionalHeader.Magic);
+        } else if (magic == 0x20B) {
+            IMAGE_NT_HEADERS64 ntHeaders64;
+            fseek(peFile, dosHeader.e_lfanew, SEEK_SET);
+            fread(&ntHeaders64, sizeof(IMAGE_NT_HEADERS64), 1, peFile);
+            printf("이 파일은 64비트 PE 파일입니다.\n");
+            printf("Magic: 0x%X\n", ntHeaders64.OptionalHeader.Magic);
+        } else {
+            printf("알 수 없는 PE 파일 형식입니다.\n");
+        }
+    }
+
     fclose(peFile);
 
     return 0;
