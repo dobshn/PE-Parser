@@ -118,6 +118,19 @@ typedef struct _IMAGE_NT_HEADERS64 {
     IMAGE_OPTIONAL_HEADER64 OptionalHeader;
 } IMAGE_NT_HEADERS64;
 
+typedef struct _IMAGE_SECTION_HEADER {
+    uint8_t  Name[8];               // 섹션 이름
+    uint32_t VirtualSize;           // 메모리에서의 크기
+    uint32_t VirtualAddress;        // 메모리에서의 시작 주소
+    uint32_t SizeOfRawData;         // 파일에서의 크기
+    uint32_t PointerToRawData;      // 파일에서의 위치
+    uint32_t PointerToRelocations;  // 재배치 정보의 위치
+    uint32_t PointerToLinenumbers;  // 줄 번호 정보의 위치
+    uint16_t NumberOfRelocations;   // 재배치 수
+    uint16_t NumberOfLinenumbers;   // 줄 번호 수
+    uint32_t Characteristics;       // 속성 (코드, 데이터, 실행 가능 등)
+} IMAGE_SECTION_HEADER;
+
 void printOptionalHeader32(IMAGE_OPTIONAL_HEADER32 optionalHeader) {
     printf("\n***********************\n");
     printf("* Optional Header 정보 (32비트) *\n");
@@ -202,6 +215,24 @@ void printOptionalHeader64(IMAGE_OPTIONAL_HEADER64 optionalHeader) {
                i, optionalHeader.DataDirectory[i].VirtualAddress, optionalHeader.DataDirectory[i].Size);
     }
 }
+
+// 섹션 헤더 출력 함수
+void printSectionHeader(IMAGE_SECTION_HEADER sectionHeader) {
+    printf("\n*******************\n");
+    printf("* 섹션 헤더 정보  *\n");
+    printf("*******************\n");
+    printf("Section Name            : %.8s\n", sectionHeader.Name);
+    printf("Virtual Size            : %u\n", sectionHeader.VirtualSize);
+    printf("Virtual Address         : 0x%X\n", sectionHeader.VirtualAddress);
+    printf("Size of Raw Data        : %u\n", sectionHeader.SizeOfRawData);
+    printf("Pointer to Raw Data     : 0x%X\n", sectionHeader.PointerToRawData);
+    printf("Pointer to Relocations   : 0x%X\n", sectionHeader.PointerToRelocations);
+    printf("Pointer to Linenumbers   : 0x%X\n", sectionHeader.PointerToLinenumbers);
+    printf("Number of Relocations    : %u\n", sectionHeader.NumberOfRelocations);
+    printf("Number of Linenumbers     : %u\n", sectionHeader.NumberOfLinenumbers);
+    printf("Characteristics         : 0x%X\n", sectionHeader.Characteristics);
+}
+
 
 int main() {
     // PE 파일 열기(rb: 바이너리로 읽기)
@@ -315,6 +346,14 @@ int main() {
         } else {
             printf("알 수 없는 PE 파일 형식입니다.\n");
         }
+    }
+
+    IMAGE_SECTION_HEADER sectionHeader;
+
+    for (int i = 0; i < fileHeader.NumberOfSections; i++) {
+        fread(&sectionHeader, sizeof(IMAGE_SECTION_HEADER), 1, peFile);
+        printSectionHeader(sectionHeader);
+        printf("\n");
     }
 
     fclose(peFile);
