@@ -118,6 +118,90 @@ typedef struct _IMAGE_NT_HEADERS64 {
     IMAGE_OPTIONAL_HEADER64 OptionalHeader;
 } IMAGE_NT_HEADERS64;
 
+void printOptionalHeader32(IMAGE_OPTIONAL_HEADER32 optionalHeader) {
+    printf("\n***********************\n");
+    printf("* Optional Header 정보 (32비트) *\n");
+    printf("***********************\n");
+    printf("Magic                     : 0x%X\n", optionalHeader.Magic);
+    printf("Major Linker Version      : %u\n", optionalHeader.MajorLinkerVersion);
+    printf("Minor Linker Version      : %u\n", optionalHeader.MinorLinkerVersion);
+    printf("Size of Code              : %u\n", optionalHeader.SizeOfCode);
+    printf("Size of Initialized Data  : %u\n", optionalHeader.SizeOfInitializedData);
+    printf("Size of Uninitialized Data: %u\n", optionalHeader.SizeOfUninitializedData);
+    printf("Address of Entry Point    : 0x%X\n", optionalHeader.AddressOfEntryPoint);
+    printf("Base of Code              : 0x%X\n", optionalHeader.BaseOfCode);
+    printf("Base of Data              : 0x%X\n", optionalHeader.BaseOfData);
+    printf("Image Base                : 0x%X\n", optionalHeader.ImageBase);
+    printf("Section Alignment         : %u\n", optionalHeader.SectionAlignment);
+    printf("File Alignment            : %u\n", optionalHeader.FileAlignment);
+    printf("Major Operating System Version : %u\n", optionalHeader.MajorOperatingSystemVersion);
+    printf("Minor Operating System Version : %u\n", optionalHeader.MinorOperatingSystemVersion);
+    printf("Major Image Version       : %u\n", optionalHeader.MajorImageVersion);
+    printf("Minor Image Version       : %u\n", optionalHeader.MinorImageVersion);
+    printf("Major Subsystem Version   : %u\n", optionalHeader.MajorSubsystemVersion);
+    printf("Minor Subsystem Version   : %u\n", optionalHeader.MinorSubsystemVersion);
+    printf("Win32 Version Value       : 0x%X\n", optionalHeader.Win32VersionValue);
+    printf("Size of Image             : %u\n", optionalHeader.SizeOfImage);
+    printf("Size of Headers           : %u\n", optionalHeader.SizeOfHeaders);
+    printf("CheckSum                  : 0x%X\n", optionalHeader.CheckSum);
+    printf("Subsystem                 : 0x%X\n", optionalHeader.Subsystem);
+    printf("Dll Characteristics       : 0x%X\n", optionalHeader.DllCharacteristics);
+    printf("Size of Stack Reserve     : %u\n", optionalHeader.SizeOfStackReserve);
+    printf("Size of Stack Commit      : %u\n", optionalHeader.SizeOfStackCommit);
+    printf("Size of Heap Reserve      : %u\n", optionalHeader.SizeOfHeapReserve);
+    printf("Size of Heap Commit       : %u\n", optionalHeader.SizeOfHeapCommit);
+    printf("Loader Flags              : 0x%X\n", optionalHeader.LoaderFlags);
+    printf("Number of RVA and Sizes   : %u\n", optionalHeader.NumberOfRvaAndSizes);
+
+    // Data Directory 출력
+    printf("\nData Directory:\n");
+    for (int i = 0; i < 16; i++) {
+        printf("  Entry %d - Virtual Address: 0x%X, Size: %u\n",
+               i, optionalHeader.DataDirectory[i].VirtualAddress, optionalHeader.DataDirectory[i].Size);
+    }
+}
+
+void printOptionalHeader64(IMAGE_OPTIONAL_HEADER64 optionalHeader) {
+    printf("\n***********************\n");
+    printf("* Optional Header 정보 (64비트) *\n");
+    printf("***********************\n");
+    printf("Magic                     : 0x%X\n", optionalHeader.Magic);
+    printf("Major Linker Version      : %u\n", optionalHeader.MajorLinkerVersion);
+    printf("Minor Linker Version      : %u\n", optionalHeader.MinorLinkerVersion);
+    printf("Size of Code              : %u\n", optionalHeader.SizeOfCode);
+    printf("Size of Initialized Data  : %u\n", optionalHeader.SizeOfInitializedData);
+    printf("Size of Uninitialized Data: %u\n", optionalHeader.SizeOfUninitializedData);
+    printf("Address of Entry Point    : 0x%X\n", optionalHeader.AddressOfEntryPoint);
+    printf("Base of Code              : 0x%X\n", optionalHeader.BaseOfCode);
+    printf("Image Base                : 0x%lX\n", optionalHeader.ImageBase);
+    printf("Section Alignment         : %u\n", optionalHeader.SectionAlignment);
+    printf("File Alignment            : %u\n", optionalHeader.FileAlignment);
+    printf("Major Operating System Version : %u\n", optionalHeader.MajorOperatingSystemVersion);
+    printf("Minor Operating System Version : %u\n", optionalHeader.MinorOperatingSystemVersion);
+    printf("Major Image Version       : %u\n", optionalHeader.MajorImageVersion);
+    printf("Minor Image Version       : %u\n", optionalHeader.MinorImageVersion);
+    printf("Major Subsystem Version   : %u\n", optionalHeader.MajorSubsystemVersion);
+    printf("Minor Subsystem Version   : %u\n", optionalHeader.MinorSubsystemVersion);
+    printf("Win32 Version Value       : 0x%X\n", optionalHeader.Win32VersionValue);
+    printf("Size of Image             : %u\n", optionalHeader.SizeOfImage);
+    printf("Size of Headers           : %u\n", optionalHeader.SizeOfHeaders);
+    printf("CheckSum                  : 0x%X\n", optionalHeader.CheckSum);
+    printf("Subsystem                 : 0x%X\n", optionalHeader.Subsystem);
+    printf("Dll Characteristics       : 0x%X\n", optionalHeader.DllCharacteristics);
+    printf("Size of Stack Reserve     : %llu\n", optionalHeader.SizeOfStackReserve);
+    printf("Size of Stack Commit      : %llu\n", optionalHeader.SizeOfStackCommit);
+    printf("Size of Heap Reserve      : %llu\n", optionalHeader.SizeOfHeapReserve);
+    printf("Size of Heap Commit       : %llu\n", optionalHeader.SizeOfHeapCommit);
+    printf("Loader Flags              : 0x%X\n", optionalHeader.LoaderFlags);
+    printf("Number of RVA and Sizes   : %u\n", optionalHeader.NumberOfRvaAndSizes);
+
+    // Data Directory 출력
+    printf("\nData Directory:\n");
+    for (int i = 0; i < 16; i++) {
+        printf("  Entry %d - Virtual Address: 0x%X, Size: %u\n",
+               i, optionalHeader.DataDirectory[i].VirtualAddress, optionalHeader.DataDirectory[i].Size);
+    }
+}
 
 int main() {
     // PE 파일 열기(rb: 바이너리로 읽기)
@@ -221,13 +305,13 @@ int main() {
             fseek(peFile, dosHeader.e_lfanew, SEEK_SET);
             fread(&ntHeaders32, sizeof(IMAGE_NT_HEADERS32), 1, peFile);
             printf("이 파일은 32비트 PE 파일입니다.\n");
-            printf("Magic: 0x%X\n", ntHeaders32.OptionalHeader.Magic);
+            printOptionalHeader32(ntHeaders32.OptionalHeader);
         } else if (magic == 0x20B) {
             IMAGE_NT_HEADERS64 ntHeaders64;
             fseek(peFile, dosHeader.e_lfanew, SEEK_SET);
             fread(&ntHeaders64, sizeof(IMAGE_NT_HEADERS64), 1, peFile);
             printf("이 파일은 64비트 PE 파일입니다.\n");
-            printf("Magic: 0x%X\n", ntHeaders64.OptionalHeader.Magic);
+            printOptionalHeader64(ntHeaders64.OptionalHeader);
         } else {
             printf("알 수 없는 PE 파일 형식입니다.\n");
         }
