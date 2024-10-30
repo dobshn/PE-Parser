@@ -233,6 +233,18 @@ void printSectionHeader(IMAGE_SECTION_HEADER sectionHeader) {
     printf("Characteristics         : 0x%X\n", sectionHeader.Characteristics);
 }
 
+//
+const char* GetMachineType(uint16_t machine) {
+    switch (machine) {
+        case 0x014c: return "Intel 386";
+        case 0x8664: return "x64";
+        case 0x01c0: return "ARM little endian";
+        case 0x01c4: return "ARMv7 (Tumb-2)";
+        case 0xaa64: return "ARM64 little endian";
+        default: return "Unknown machine type";
+    }
+}
+
 
 int main() {
     // PE 파일 열기(rb: 바이너리로 읽기)
@@ -317,7 +329,7 @@ int main() {
     IMAGE_FILE_HEADER fileHeader;
     fread(&fileHeader, sizeof(fileHeader), 1, peFile);
 
-    printf("Machine                 : 0x%X\n", fileHeader.Machine);              // 대상 머신 아키텍처
+    printf("Machine                 : 0x%X (%s)\n", fileHeader.Machine, GetMachineType(fileHeader.Machine)); // 대상 머신 아키텍처
     printf("Number of Sections      : %u\n", fileHeader.NumberOfSections);       // 섹션의 개수
     printf("Time Date Stamp         : 0x%X\n", fileHeader.TimeDateStamp);        // 파일 생성 시간
     printf("Pointer to Symbol Table : 0x%X\n", fileHeader.PointerToSymbolTable); // 심볼 테이블의 파일 오프셋
