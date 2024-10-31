@@ -26,8 +26,8 @@ typedef struct _IMAGE_DOS_HEADER {
 
 // PE 헤더 구조체 정의
 typedef struct {
-    uint16_t VirtualAddress;
-    uint16_t Size;
+    uint32_t VirtualAddress;
+    uint32_t Size;
 } IMAGE_DATA_DIRECTORY;
 
 typedef struct {
