@@ -80,6 +80,22 @@ typedef struct {
     IMAGE_OPTIONAL_HEADER32 OptionalHeader;
 } IMAGE_NT_HEADERS32;
 
+typedef struct {
+    uint8_t  Name[8];
+    union {
+        uint32_t PhysicalAddress;
+        uint32_t VirtualSize;
+    } Misc;
+    uint32_t VirtualAddress;
+    uint32_t SizeOfRawData;
+    uint32_t PointerToRawData;
+    uint32_t PointerToRelocations;
+    uint32_t PointerToLinenumbers;
+    uint16_t NumberOfRelocations;
+    uint16_t NumberOfLinenumbers;
+    uint32_t Characteristics;
+} IMAGE_SECTION_HEADER;
+
 const char* getMachine(uint16_t machine) {
     switch (machine) {
         case 0x014c: return "x86";
@@ -292,8 +308,75 @@ void printNtHeader32(const IMAGE_NT_HEADERS32 *ntHeader) {
     printOptionalHeader(&ntHeader->OptionalHeader);
 }
 
+void printSectionCharacteristics(uint32_t characteristics) {
+    printf("Characteristics         : 0x%X\n", characteristics);
+
+    if (characteristics & 0x00000001) printf("0x00000001 - 예약되어 있습니다.\n");
+    if (characteristics & 0x00000002) printf("0x00000002 - 예약되어 있습니다.\n");
+    if (characteristics & 0x00000004) printf("0x00000004 - 예약되어 있습니다.\n");
+    if (characteristics & 0x00000008) printf("IMAGE_SCN_TYPE_NO_PAD\n0x00000008 - 섹션을 다음 경계까지 채우지 않습니다. 이 플래그는 더 이상 사용되지 않으며 IMAGE_SCN_ALIGN_1BYTES로 대체됩니다.\n");
+    if (characteristics & 0x00000010) printf("0x00000010 - 예약되어 있습니다.\n");
+    if (characteristics & 0x00000020) printf("IMAGE_SCN_CNT_CODE\n0x00000020 - 실행 코드가 섹션에 포함됩니다.\n");
+    if (characteristics & 0x00000040) printf("IMAGE_SCN_CNT_INITIALIZED_DATA\n0x00000040 - 초기화된 데이터가 섹션에 포함됩니다.\n");
+    if (characteristics & 0x00000080) printf("IMAGE_SCN_CNT_UNINITIALIZED_DATA\n0x00000080 - 초기화되지 않은 데이터가 섹션에 포함됩니다.\n");
+    if (characteristics & 0x00000100) printf("IMAGE_SCN_LNK_OTHER\n0x00000100 - 예약되어 있습니다.\n");
+    if (characteristics & 0x00000200) printf("IMAGE_SCN_LNK_INFO\n0x00000200 - 주석 또는 기타 정보가 섹션에 포함됩니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00000800) printf("IMAGE_SCN_LNK_REMOVE\n0x00000800 - 섹션이 이미지의 일부가 되지 않습니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00001000) printf("IMAGE_SCN_LNK_COMDAT\n0x00001000 - COMDAT 데이터가 섹션에 포함됩니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00004000) printf("IMAGE_SCN_NO_DEFER_SPEC_EXC\n0x00004000 - 이 섹션의 TLB 항목에서 비트를 처리하는 투기적 예외를 다시 설정합니다.\n");
+    if (characteristics & 0x00008000) printf("IMAGE_SCN_GPREL\n0x00008000 - 섹션에는 전역 포인터를 통해 참조되는 데이터가 포함되어 있습니다.\n");
+
+    // 예약된 값들
+    if (characteristics & 0x00010000) printf("0x00010000 - 예약되어 있습니다.\n");
+    if (characteristics & 0x00020000) printf("IMAGE_SCN_MEM_PURGEABLE\n0x00020000 - 예약되어 있습니다.\n");
+    if (characteristics & 0x00040000) printf("IMAGE_SCN_MEM_LOCKED\n0x00040000 - 예약되어 있습니다.\n");
+    if (characteristics & 0x00080000) printf("IMAGE_SCN_MEM_PRELOAD\n0x00080000 - 예약되어 있습니다.\n");
+
+    // Alignment 값들
+    if (characteristics & 0x00100000) printf("IMAGE_SCN_ALIGN_1BYTES\n0x00100000 - 데이터를 1바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00200000) printf("IMAGE_SCN_ALIGN_2BYTES\n0x00200000 - 데이터를 2바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00300000) printf("IMAGE_SCN_ALIGN_4BYTES\n0x00300000 - 데이터를 4바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00400000) printf("IMAGE_SCN_ALIGN_8BYTES\n0x00400000 - 데이터를 8바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00500000) printf("IMAGE_SCN_ALIGN_16BYTES\n0x00500000 - 데이터를 16바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00600000) printf("IMAGE_SCN_ALIGN_32BYTES\n0x00600000 - 데이터를 32바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00700000) printf("IMAGE_SCN_ALIGN_64BYTES\n0x00700000 - 데이터를 64바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00800000) printf("IMAGE_SCN_ALIGN_128BYTES\n0x00800000 - 데이터를 128바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00900000) printf("IMAGE_SCN_ALIGN_256BYTES\n0x00900000 - 데이터를 256바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00A00000) printf("IMAGE_SCN_ALIGN_512BYTES\n0x00A00000 - 데이터를 512바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00B00000) printf("IMAGE_SCN_ALIGN_1024BYTES\n0x00B00000 - 데이터를 1,024바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00C00000) printf("IMAGE_SCN_ALIGN_2048BYTES\n0x00C00000 - 데이터를 2,048바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00D00000) printf("IMAGE_SCN_ALIGN_4096BYTES\n0x00D00000 - 데이터를 4,096바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+    if (characteristics & 0x00E00000) printf("IMAGE_SCN_ALIGN_8192BYTES\n0x00E00000 - 데이터를 8,192바이트 경계에 맞춥니다. 개체 파일에만 유효합니다.\n");
+
+    // 기타 속성들
+    if (characteristics & 0x01000000) printf("IMAGE_SCN_LNK_NRELOC_OVFL\n0x01000000 - 확장 재배치가 섹션에 포함됩니다.\n");
+    if (characteristics & 0x02000000) printf("IMAGE_SCN_MEM_DISCARDABLE\n0x02000000 - 필요에 따라 섹션을 삭제할 수 있습니다.\n");
+    if (characteristics & 0x04000000) printf("IMAGE_SCN_MEM_NOT_CACHED\n0x04000000 - 섹션을 캐시할 수 없습니다.\n");
+    if (characteristics & 0x08000000) printf("IMAGE_SCN_MEM_NOT_PAGED\n0x08000000 - 섹션을 페이징할 수 없습니다.\n");
+    if (characteristics & 0x10000000) printf("IMAGE_SCN_MEM_SHARED\n0x10000000 - 메모리에서 섹션을 공유할 수 있습니다.\n");
+    if (characteristics & 0x20000000) printf("IMAGE_SCN_MEM_EXECUTE\n0x20000000 - 섹션을 코드로 실행할 수 있습니다.\n");
+    if (characteristics & 0x40000000) printf("IMAGE_SCN_MEM_READ\n0x40000000 - 섹션을 읽을 수 있습니다.\n");
+    if (characteristics & 0x80000000) printf("IMAGE_SCN_MEM_WRITE\n0x80000000 - 섹션에 쓸 수 있습니다.\n");
+}
+
+void printSectionHeader(const IMAGE_SECTION_HEADER* sectionHeader) {
+    printf("\n*******************\n");
+    printf("* 섹션 헤더 정보  *\n");
+    printf("*******************\n");
+    printf("섹션 이름              : %.8s\n", sectionHeader->Name);
+    printf("메모리에서의 크기      : %u\n", sectionHeader->Misc.VirtualSize);
+    printf("메모리 시작 주소       : 0x%X\n", sectionHeader->VirtualAddress);
+    printf("파일에서의 크기        : %u\n", sectionHeader->SizeOfRawData);
+    printf("파일에서의 위치        : 0x%X\n", sectionHeader->PointerToRawData);
+    printf("재배치 정보 위치       : 0x%X\n", sectionHeader->PointerToRelocations);
+    printf("줄 번호 정보 위치      : 0x%X\n", sectionHeader->PointerToLinenumbers);
+    printf("재배치 수              : %u\n", sectionHeader->NumberOfRelocations);
+    printf("줄 번호 수             : %u\n", sectionHeader->NumberOfLinenumbers);
+    printSectionCharacteristics(sectionHeader->Characteristics);
+}
+
 int main() {
-    FILE *peFile = fopen("sample.exe", "rb");
+    FILE *peFile = fopen("notepad++.exe", "rb");
     if (peFile == NULL) {
         printf("파일을 열 수 없습니다.\n");
         return 1;
@@ -317,6 +400,13 @@ int main() {
     printDosHeader(&dosHeader);
 
     printNtHeader32(&ntHeaders32);
+
+    IMAGE_SECTION_HEADER sectionHeader;
+    for (int i = 0; i < ntHeaders32.FileHeader.NumberOfSections; i++) {
+        fread(&sectionHeader, sizeof(IMAGE_SECTION_HEADER), 1, peFile);
+        printSectionHeader(&sectionHeader);
+        printf("\n");
+    }
 
     return 0;
 }
