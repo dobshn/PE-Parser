@@ -243,6 +243,25 @@ void printOptionalHeader(const IMAGE_OPTIONAL_HEADER32 *optionalHeader) {
     printDataDirectories(optionalHeader->DataDirectory, optionalHeader->NumberOfRvaAndSizes);
 }
 
+void printNtHeader32(const IMAGE_NT_HEADERS32 *ntHeader) {
+    printf("*******************\n");
+    printf("* NT Header 정보 *\n");
+    printf("*******************\n");
+    printf("Signature               : 0x%X\n", ntHeader->Signature);
+
+    // Signature가 올바른지 확인 (PE\0\0)
+    if (ntHeader->Signature != 0x00004550) {
+        printf("올바르지 않은 NT Header Signature입니다.\n");
+        return;
+    }
+
+    // File Header 출력
+    printFileHeader(&ntHeader->FileHeader);
+
+    // Optional Header 출력
+    printOptionalHeader(&ntHeader->OptionalHeader);
+}
+
 int main() {
     FILE *peFile = fopen("sample.exe", "rb");
     if (peFile == NULL) {
@@ -294,6 +313,12 @@ int main() {
     printf("*  DOS Stub의 정보  *\n");
     printf("*******************\n");
     printf("DOS Stub의 크기: %lu 바이트\n", dosHeader.e_lfanew - sizeof(IMAGE_DOS_HEADER));
+
+    // NT 헤더 정보 출력
+    IMAGE_NT_HEADERS32 ntHeaders32;
+    fseek(peFile, dosHeader.e_lfanew, SEEK_SET);
+    fread(&ntHeaders32, sizeof(IMAGE_NT_HEADERS32), 1, peFile);
+    printNtHeader32(&ntHeaders32);
 
     return 0;
 }
