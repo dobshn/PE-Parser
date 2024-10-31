@@ -137,6 +137,112 @@ void printFileHeader(const IMAGE_FILE_HEADER *fileHeader) {
     printCharacteristics(fileHeader->Characteristics);
 }
 
+const char* getMagic(uint16_t magic) {
+    switch (magic) {
+        case 0x010B: return "PE32 (32비트)";
+        case 0x020B: return "PE32+ (64비트)";
+        case 0x0107: return "ROM 이미지";
+        default: return "알 수 없는 매직 넘버";
+    }
+}
+
+const char* getSubsystem(uint16_t subsystem) {
+    switch (subsystem) {
+        case 0:  return "알 수 없음";
+        case 1:  return "네이티브";
+        case 2:  return "Windows GUI";
+        case 3:  return "Windows CUI";
+        case 5:  return "OS/2 CUI";
+        case 7:  return "POSIX CUI";
+        case 9:  return "Windows CE GUI";
+        case 10: return "EFI 응용 프로그램";
+        case 11: return "EFI 부트 서비스 드라이버";
+        case 12: return "EFI 런타임 드라이버";
+        case 13: return "EFI ROM";
+        case 14: return "XBOX";
+        case 16: return "Windows 부트 애플리케이션";
+        default: return "알 수 없는 서브시스템";
+    }
+}
+
+void printDllCharacteristics(uint16_t dllCharacteristics) {
+    printf("DllCharacteristics      :\n");
+    if (dllCharacteristics & 0x0040) printf(" - 주소 공간 배치 랜덤화 사용 가능 (ASLR)\n");
+    if (dllCharacteristics & 0x0080) printf(" - 무결성 체크 필요\n");
+    if (dllCharacteristics & 0x0100) printf(" - DEP 사용 가능\n");
+    if (dllCharacteristics & 0x0200) printf(" - Isolation 사용 안 함\n");
+    if (dllCharacteristics & 0x0400) printf(" - SEH 사용 안 함\n");
+    if (dllCharacteristics & 0x0800) printf(" - 바인딩 사용 안 함\n");
+    if (dllCharacteristics & 0x1000) printf(" - AppContainer에서 실행\n");
+    if (dllCharacteristics & 0x2000) printf(" - WDM 드라이버\n");
+    if (dllCharacteristics & 0x8000) printf(" - 터미널 서버 인식\n");
+}
+
+void printDataDirectories(const IMAGE_DATA_DIRECTORY* dataDirectories, uint32_t numberOfRvaAndSizes) {
+    const char* directoryNames[] = {
+        "Export Table",
+        "Import Table",
+        "Resource Table",
+        "Exception Table",
+        "Certificate Table",
+        "Base Relocation Table",
+        "Debug",
+        "Architecture",
+        "Global Ptr",
+        "TLS Table",
+        "Load Config Table",
+        "Bound Import",
+        "IAT",
+        "Delay Import Descriptor",
+        "CLR Runtime Header",
+        "Reserved"
+    };
+
+    printf("Data Directories:\n");
+    for (uint32_t i = 0; i < numberOfRvaAndSizes && i < 16; ++i) {
+        printf(" [%u] %s\n", i, directoryNames[i]);
+        printf("     VirtualAddress: 0x%X\n", dataDirectories[i].VirtualAddress);
+        printf("     Size          : 0x%X\n", dataDirectories[i].Size);
+    }
+}
+
+void printOptionalHeader(const IMAGE_OPTIONAL_HEADER32 *optionalHeader) {
+    printf("***********************\n");
+    printf("* Optional Header 정보 *\n");
+    printf("***********************\n");
+    printf("Magic                   : %s\n", getMagic(optionalHeader->Magic));
+    printf("MajorLinkerVersion      : %u\n", optionalHeader->MajorLinkerVersion);
+    printf("MinorLinkerVersion      : %u\n", optionalHeader->MinorLinkerVersion);
+    printf("SizeOfCode              : 0x%X\n", optionalHeader->SizeOfCode);
+    printf("SizeOfInitializedData   : 0x%X\n", optionalHeader->SizeOfInitializedData);
+    printf("SizeOfUninitializedData : 0x%X\n", optionalHeader->SizeOfUninitializedData);
+    printf("AddressOfEntryPoint     : 0x%X\n", optionalHeader->AddressOfEntryPoint);
+    printf("BaseOfCode              : 0x%X\n", optionalHeader->BaseOfCode);
+    printf("BaseOfData              : 0x%X\n", optionalHeader->BaseOfData);
+    printf("ImageBase               : 0x%X\n", optionalHeader->ImageBase);
+    printf("SectionAlignment        : 0x%X\n", optionalHeader->SectionAlignment);
+    printf("FileAlignment           : 0x%X\n", optionalHeader->FileAlignment);
+    printf("MajorOperatingSystemVersion: %u\n", optionalHeader->MajorOperatingSystemVersion);
+    printf("MinorOperatingSystemVersion: %u\n", optionalHeader->MinorOperatingSystemVersion);
+    printf("MajorImageVersion       : %u\n", optionalHeader->MajorImageVersion);
+    printf("MinorImageVersion       : %u\n", optionalHeader->MinorImageVersion);
+    printf("MajorSubsystemVersion   : %u\n", optionalHeader->MajorSubsystemVersion);
+    printf("MinorSubsystemVersion   : %u\n", optionalHeader->MinorSubsystemVersion);
+    printf("Win32VersionValue       : %u\n", optionalHeader->Win32VersionValue);
+    printf("SizeOfImage             : 0x%X\n", optionalHeader->SizeOfImage);
+    printf("SizeOfHeaders           : 0x%X\n", optionalHeader->SizeOfHeaders);
+    printf("CheckSum                : 0x%X\n", optionalHeader->CheckSum);
+    printf("Subsystem               : %s\n", getSubsystem(optionalHeader->Subsystem));
+    printDllCharacteristics(optionalHeader->DllCharacteristics);
+    printf("SizeOfStackReserve      : 0x%X\n", optionalHeader->SizeOfStackReserve);
+    printf("SizeOfStackCommit       : 0x%X\n", optionalHeader->SizeOfStackCommit);
+    printf("SizeOfHeapReserve       : 0x%X\n", optionalHeader->SizeOfHeapReserve);
+    printf("SizeOfHeapCommit        : 0x%X\n", optionalHeader->SizeOfHeapCommit);
+    printf("LoaderFlags             : 0x%X\n", optionalHeader->LoaderFlags);
+    printf("NumberOfRvaAndSizes     : %u\n", optionalHeader->NumberOfRvaAndSizes);
+    printDataDirectories(optionalHeader->DataDirectory, optionalHeader->NumberOfRvaAndSizes);
+}
+
 int main() {
     FILE *peFile = fopen("sample.exe", "rb");
     if (peFile == NULL) {
