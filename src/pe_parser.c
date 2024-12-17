@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <time.h>
 #include <string.h>
 
@@ -462,6 +463,166 @@ void printSectionHeader(const IMAGE_SECTION_HEADER* sectionHeader) {
     printSectionCharacteristics(sectionHeader->Characteristics);
 }
 
+// 분석 결과를 담을 구조체
+typedef struct {
+    int isPE32; // 1이면 PE32, 0이면 PE32+, -1이면 분석 실패
+    IMAGE_DOS_HEADER dosHeader;
+    IMAGE_FILE_HEADER fileHeader;
+    union {
+        IMAGE_OPTIONAL_HEADER32 opt32;
+        IMAGE_OPTIONAL_HEADER64 opt64;
+    } optHeader; // PE32/PE32+ 중 하나만 유효
+    uint32_t signature;
+    IMAGE_SECTION_HEADER *sectionHeaders; // 섹션 헤더 배열
+    int sectionCount;
+} PEAnalysisResult;
+
+// PE 파일 분석 함수
+int analyzePEFile(const char *filename, PEAnalysisResult *result) {
+    FILE *peFile = fopen(filename, "rb");
+    if (peFile == NULL) {
+        printf("파일을 열 수 없습니다: %s\n", filename);
+        return 0;
+    }
+
+    IMAGE_DOS_HEADER dosHeader;
+    if (fread(&dosHeader, sizeof(dosHeader), 1, peFile) != 1 || dosHeader.e_magic != 0x5A4D) {
+        fclose(peFile);
+        return 0;
+    }
+
+    fseek(peFile, dosHeader.e_lfanew, SEEK_SET);
+    uint32_t signature;
+    if (fread(&signature, sizeof(signature), 1, peFile) != 1 || signature != 0x00004550) {
+        fclose(peFile);
+        return 0;
+    }
+
+    IMAGE_FILE_HEADER fileHeader;
+    if (fread(&fileHeader, sizeof(fileHeader), 1, peFile) != 1) {
+        fclose(peFile);
+        return 0;
+    }
+
+    // Optional Header Magic 확인
+    long optHeaderStart = ftell(peFile);
+    uint16_t magic;
+    if (fread(&magic, sizeof(magic), 1, peFile) != 1) {
+        fclose(peFile);
+        return 0;
+    }
+    fseek(peFile, optHeaderStart, SEEK_SET);
+
+    result->dosHeader = dosHeader;
+    result->fileHeader = fileHeader;
+    result->signature = signature;
+    result->sectionCount = fileHeader.NumberOfSections;
+    result->sectionHeaders = NULL;
+
+    if (magic == 0x010B) {
+        // PE32
+        result->isPE32 = 1;
+        IMAGE_OPTIONAL_HEADER32 opt32;
+        if (fread(&opt32, fileHeader.SizeOfOptionalHeader, 1, peFile) != 1) {
+            fclose(peFile);
+            return 0;
+        }
+        result->optHeader.opt32 = opt32;
+    } else if (magic == 0x020B) {
+        // PE32+
+        result->isPE32 = 0;
+        IMAGE_OPTIONAL_HEADER64 opt64;
+        if (fread(&opt64, fileHeader.SizeOfOptionalHeader, 1, peFile) != 1) {
+            fclose(peFile);
+            return 0;
+        }
+        result->optHeader.opt64 = opt64;
+    } else {
+        fclose(peFile);
+        return 0;
+    }
+
+    // 섹션 헤더 읽기
+    if (result->sectionCount > 0) {
+        result->sectionHeaders = (IMAGE_SECTION_HEADER*)malloc(sizeof(IMAGE_SECTION_HEADER)*result->sectionCount);
+        if (result->sectionHeaders == NULL) {
+            fclose(peFile);
+            return 0;
+        }
+
+        for (int i = 0; i < result->sectionCount; i++) {
+            if (fread(&result->sectionHeaders[i], sizeof(IMAGE_SECTION_HEADER), 1, peFile) != 1) {
+                free(result->sectionHeaders);
+                result->sectionHeaders = NULL;
+                fclose(peFile);
+                return 0;
+            }
+        }
+    }
+
+    fclose(peFile);
+    return 1;
+}
+
+// 간략한 정보 출력 함수
+void printBasicInfo(const PEAnalysisResult *res) {
+    // 아주 간략한 정보: 32비트/64비트 여부, 섹션 수, 서브시스템 등
+    if (res->isPE32 == 1) {
+        printf("이 파일은 PE32 (32비트) 파일입니다.\n");
+        printf("섹션 개수: %d개\n", res->sectionCount);
+        printf("Subsystem: %s\n", getSubsystem(res->optHeader.opt32.Subsystem));
+    } else {
+        printf("이 파일은 PE32+ (64비트) 파일입니다.\n");
+        printf("섹션 개수: %d개\n", res->sectionCount);
+        printf("Subsystem: %s\n", getSubsystem(res->optHeader.opt64.Subsystem));
+    }
+}
+
+// 상세 정보 메뉴 출력
+void printDetailMenu() {
+    printf("\n어떤 정보를 출력할까요?\n");
+    printf("1. DOS Header 정보\n");
+    printf("2. NT Header 정보\n");
+    printf("3. 섹션 정보\n");
+    printf("0. 새로운 파일 분석하기\n");
+    printf("선택: ");
+}
+
+// 상세 정보 처리 함수
+void showDetailInfo(const PEAnalysisResult *res, int choice) {
+    switch (choice) {
+        case 1:
+            printDosHeader(&res->dosHeader);
+            break;
+        case 2:
+            if (res->isPE32 == 1) {
+                // PE32
+                IMAGE_NT_HEADERS32 ntHeaders32;
+                ntHeaders32.Signature = res->signature;
+                ntHeaders32.FileHeader = res->fileHeader;
+                ntHeaders32.OptionalHeader = res->optHeader.opt32;
+                printNtHeader32(&ntHeaders32);
+            } else {
+                // PE32+
+                IMAGE_NT_HEADERS64 ntHeaders64;
+                ntHeaders64.Signature = res->signature;
+                ntHeaders64.FileHeader = res->fileHeader;
+                ntHeaders64.OptionalHeader = res->optHeader.opt64;
+                printNtHeader64(&ntHeaders64);
+            }
+            break;
+        case 3:
+            for (int i = 0; i < res->sectionCount; i++) {
+                printSectionHeader(&res->sectionHeaders[i]);
+                printf("\n");
+            }
+            break;
+        default:
+            printf("잘못된 선택입니다.\n");
+            break;
+    }
+}
+
 int main() {
     char filename[256];
 
@@ -469,125 +630,57 @@ int main() {
         printf("\n===== PE Parser =====\n");
         printf("분석할 파일명을 입력하세요 (q 입력시 종료): ");
 
-        // fgets를 사용하여 입력 받기
         if (fgets(filename, sizeof(filename), stdin) == NULL) {
-            continue; // 다시 루프로
+            continue;
         }
 
-        // 개행문자 제거
         size_t len = strlen(filename);
         if (len > 0 && filename[len-1] == '\n') {
             filename[len-1] = '\0';
         }
 
-        // q 입력 시 종료
         if (strcmp(filename, "q") == 0) {
             printf("프로그램을 종료합니다.\n");
             break;
         }
 
-        FILE *peFile = fopen(filename, "rb");
-        if (peFile == NULL) {
-            printf("파일을 열 수 없습니다: %s\n", filename);
-            continue; // 시작화면으로 돌아가기
-        }
+        PEAnalysisResult res;
+        memset(&res, 0, sizeof(res));
+        res.isPE32 = -1;
 
-        IMAGE_DOS_HEADER dosHeader;
-        if (fread(&dosHeader, sizeof(dosHeader), 1, peFile) != 1 || dosHeader.e_magic != 0x5A4D) {
-            printf("PE 파일이 아니거나 읽기 실패.\n");
-            fclose(peFile);
+        // 파일 분석 (정보 출력은 여기서 하지 않음)
+        if (!analyzePEFile(filename, &res)) {
+            printf("파일 분석 실패.\n");
             continue;
         }
 
-        // NT 헤더의 Signature 읽기
-        fseek(peFile, dosHeader.e_lfanew, SEEK_SET);
-        uint32_t signature;
-        fread(&signature, sizeof(signature), 1, peFile);
-        if (signature != 0x00004550) {
-            printf("올바르지 않은 NT Header Signature입니다.\n");
-            fclose(peFile);
-            continue;
-        }
+        // 간략한 정보 출력
+        printBasicInfo(&res);
 
-        // NT 헤더의 File 헤더 읽기
-        IMAGE_FILE_HEADER fileHeader;
-        fread(&fileHeader, sizeof(fileHeader), 1, peFile);
-
-        // Optional 헤더의 Magic 필드 읽기
-        uint16_t magic;
-        long optHeaderStart = ftell(peFile); // 돌아올 위치 저장
-        if (fread(&magic, sizeof(magic), 1, peFile) != 1) {
-            printf("Optional Header Magic 읽기 실패.\n");
-            fclose(peFile);
-            continue;
-        }
-        fseek(peFile, optHeaderStart, SEEK_SET); // Magic 필드 읽은 후 Optional 헤더 시작점으로 복귀
-
-        // Magic을 통해 분기
-        if (magic == 0x010B) {
-            // PE32
-            IMAGE_NT_HEADERS32 ntHeaders32;
-            ntHeaders32.Signature = signature;
-            ntHeaders32.FileHeader = fileHeader;
-
-            // PE32 OptionalHeader 읽기
-            if (fread(&ntHeaders32.OptionalHeader, fileHeader.SizeOfOptionalHeader, 1, peFile) != 1) {
-                printf("PE32 Optional Header 읽기 실패.\n");
-                fclose(peFile);
+        // 상세 정보 요청
+        while (1) {
+            printDetailMenu();
+            int choice;
+            if (scanf("%d", &choice) != 1) {
+                // 입력 오류 처리
+                int c; while((c=getchar())!=EOF && c!='\n'); // 버퍼 비우기
+                printf("잘못된 입력입니다.\n");
                 continue;
             }
 
-            printDosHeader(&dosHeader);
-            printNtHeader32(&ntHeaders32);
+            // 엔터키 처리(남은 버퍼 제거)
+            int c; while((c=getchar())!=EOF && c!='\n');
 
-            // 섹션 헤더 읽기
-            for (int i = 0; i < ntHeaders32.FileHeader.NumberOfSections; i++) {
-                IMAGE_SECTION_HEADER sectionHeader;
-                if (fread(&sectionHeader, sizeof(IMAGE_SECTION_HEADER), 1, peFile) != 1) {
-                    printf("섹션 헤더 읽기 실패.\n");
-                    break;
+            if (choice == 0) {
+                // 새로운 파일 분석을 위해 상위 루프로 복귀
+                if (res.sectionHeaders) {
+                    free(res.sectionHeaders);
                 }
-                printSectionHeader(&sectionHeader);
-                printf("\n");
+                break;
+            } else {
+                showDetailInfo(&res, choice);
             }
-
-        } else if (magic == 0x020B) {
-            // PE32+
-            IMAGE_NT_HEADERS64 ntHeaders64;
-            ntHeaders64.Signature = signature;
-            ntHeaders64.FileHeader = fileHeader;
-
-            // PE32+ OptionalHeader 읽기
-            IMAGE_OPTIONAL_HEADER64 optionalHeader64;
-            if (fread(&optionalHeader64, fileHeader.SizeOfOptionalHeader, 1, peFile) != 1) {
-                printf("PE32+ Optional Header 읽기 실패.\n");
-                fclose(peFile);
-                continue;
-            }
-            ntHeaders64.OptionalHeader = optionalHeader64;
-
-            printDosHeader(&dosHeader);
-            printNtHeader64(&ntHeaders64);
-
-            // 섹션 헤더 읽기
-            for (int i = 0; i < ntHeaders64.FileHeader.NumberOfSections; i++) {
-                IMAGE_SECTION_HEADER sectionHeader;
-                if (fread(&sectionHeader, sizeof(IMAGE_SECTION_HEADER), 1, peFile) != 1) {
-                    printf("섹션 헤더 읽기 실패.\n");
-                    break;
-                }
-                printSectionHeader(&sectionHeader);
-                printf("\n");
-            }
-
-        } else {
-            printf("알 수 없는 Magic: 0x%X\n", magic);
-            fclose(peFile);
-            continue;
         }
-
-        fclose(peFile);
-        // 분석 끝난 후에도 다시 시작화면으로 돌아감
     }
 
     return 0;
