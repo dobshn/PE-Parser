@@ -308,7 +308,7 @@ void printNtHeader32(const IMAGE_NT_HEADERS32 *ntHeader) {
     printOptionalHeader(&ntHeader->OptionalHeader);
 }
 
-void printSectionCharacteristics(uint32_t characteristics) {
+void printSectionCharacteristics(const uint32_t characteristics) {
     printf("Characteristics         : 0x%X\n", characteristics);
 
     if (characteristics & 0x00000001) printf("0x00000001 - 예약되어 있습니다.\n");
