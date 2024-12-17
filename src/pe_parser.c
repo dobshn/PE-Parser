@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <time.h>
+#include <string.h>
 
 typedef struct _IMAGE_DOS_HEADER {
     uint16_t e_magic;
@@ -376,36 +377,66 @@ void printSectionHeader(const IMAGE_SECTION_HEADER* sectionHeader) {
 }
 
 int main() {
-    FILE *peFile = fopen("notepad++.exe", "rb");
-    if (peFile == NULL) {
-        printf("파일을 열 수 없습니다.\n");
-        return 1;
-    }
+    char filename[256];
 
-    IMAGE_DOS_HEADER dosHeader;
-    fread(&dosHeader, sizeof(dosHeader), 1, peFile);
-    if (dosHeader.e_magic != 0x5A4D) {
-        printf("PE 파일이 아닙니다.\n");
-        return 1;
-    }
+    while (1) {
+        printf("\n===== PE Parser =====\n");
+        printf("분석할 파일명을 입력하세요 (q 입력시 종료): ");
 
-    IMAGE_NT_HEADERS32 ntHeaders32;
-    fseek(peFile, dosHeader.e_lfanew, SEEK_SET);
-    fread(&ntHeaders32, sizeof(IMAGE_NT_HEADERS32), 1, peFile);
-    if (ntHeaders32.Signature != 0x00004550) {
-        printf("올바르지 않은 NT Header Signature입니다.\n");
-        return 1;
-    }
+        // fgets를 사용하여 입력 받기
+        if (fgets(filename, sizeof(filename), stdin) == NULL) {
+            continue; // 다시 루프로
+        }
 
-    printDosHeader(&dosHeader);
+        // 개행문자 제거
+        size_t len = strlen(filename);
+        if (len > 0 && filename[len-1] == '\n') {
+            filename[len-1] = '\0';
+        }
 
-    printNtHeader32(&ntHeaders32);
+        // q 입력 시 종료
+        if (strcmp(filename, "q") == 0) {
+            printf("프로그램을 종료합니다.\n");
+            break;
+        }
 
-    IMAGE_SECTION_HEADER sectionHeader;
-    for (int i = 0; i < ntHeaders32.FileHeader.NumberOfSections; i++) {
-        fread(&sectionHeader, sizeof(IMAGE_SECTION_HEADER), 1, peFile);
-        printSectionHeader(&sectionHeader);
-        printf("\n");
+        FILE *peFile = fopen(filename, "rb");
+        if (peFile == NULL) {
+            printf("파일을 열 수 없습니다: %s\n", filename);
+            continue; // 시작화면으로 돌아가기
+        }
+
+        IMAGE_DOS_HEADER dosHeader;
+        if (fread(&dosHeader, sizeof(dosHeader), 1, peFile) != 1 || dosHeader.e_magic != 0x5A4D) {
+            printf("PE 파일이 아니거나 읽기 실패.\n");
+            fclose(peFile);
+            continue;
+        }
+
+        IMAGE_NT_HEADERS32 ntHeaders32;
+        fseek(peFile, dosHeader.e_lfanew, SEEK_SET);
+        if (fread(&ntHeaders32, sizeof(IMAGE_NT_HEADERS32), 1, peFile) != 1 || ntHeaders32.Signature != 0x00004550) {
+            printf("올바르지 않은 NT Header Signature입니다.\n");
+            fclose(peFile);
+            continue;
+        }
+
+        // 분석 시작
+        printDosHeader(&dosHeader);
+        printNtHeader32(&ntHeaders32);
+
+        for (int i = 0; i < ntHeaders32.FileHeader.NumberOfSections; i++) {
+            IMAGE_SECTION_HEADER sectionHeader;
+            if (fread(&sectionHeader, sizeof(IMAGE_SECTION_HEADER), 1, peFile) != 1) {
+                printf("섹션 헤더 읽기 실패.\n");
+                break;
+            }
+            printSectionHeader(&sectionHeader);
+            printf("\n");
+        }
+
+        fclose(peFile);
+        // 분석 끝난 후에도 다시 시작화면으로 돌아감
     }
 
     return 0;
