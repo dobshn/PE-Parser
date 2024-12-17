@@ -66,6 +66,39 @@ typedef struct {
 } IMAGE_OPTIONAL_HEADER32;
 
 typedef struct {
+    uint16_t Magic;
+    uint8_t  MajorLinkerVersion;
+    uint8_t  MinorLinkerVersion;
+    uint32_t SizeOfCode;
+    uint32_t SizeOfInitializedData;
+    uint32_t SizeOfUninitializedData;
+    uint32_t AddressOfEntryPoint;
+    uint32_t BaseOfCode;
+    uint64_t ImageBase;
+    uint32_t SectionAlignment;
+    uint32_t FileAlignment;
+    uint16_t MajorOperatingSystemVersion;
+    uint16_t MinorOperatingSystemVersion;
+    uint16_t MajorImageVersion;
+    uint16_t MinorImageVersion;
+    uint16_t MajorSubsystemVersion;
+    uint16_t MinorSubsystemVersion;
+    uint32_t Win32VersionValue;
+    uint32_t SizeOfImage;
+    uint32_t SizeOfHeaders;
+    uint32_t CheckSum;
+    uint16_t Subsystem;
+    uint16_t DllCharacteristics;
+    uint64_t SizeOfStackReserve;
+    uint64_t SizeOfStackCommit;
+    uint64_t SizeOfHeapReserve;
+    uint64_t SizeOfHeapCommit;
+    uint32_t LoaderFlags;
+    uint32_t NumberOfRvaAndSizes;
+    IMAGE_DATA_DIRECTORY DataDirectory[16];
+} IMAGE_OPTIONAL_HEADER64;
+
+typedef struct {
     uint16_t Machine;
     uint16_t NumberOfSections;
     uint32_t TimeDateStamp;
@@ -80,6 +113,12 @@ typedef struct {
     IMAGE_FILE_HEADER FileHeader;
     IMAGE_OPTIONAL_HEADER32 OptionalHeader;
 } IMAGE_NT_HEADERS32;
+
+typedef struct {
+    uint32_t Signature;
+    IMAGE_FILE_HEADER FileHeader;
+    IMAGE_OPTIONAL_HEADER64 OptionalHeader;
+} IMAGE_NT_HEADERS64;
 
 typedef struct {
     uint8_t  Name[8];
@@ -261,7 +300,7 @@ void printDosHeader(const IMAGE_DOS_HEADER *dosHeader) {
     printf("DOS Stub의 크기: %lu 바이트\n", dosHeader->e_lfanew - sizeof(IMAGE_DOS_HEADER));
 }
 
-void printOptionalHeader(const IMAGE_OPTIONAL_HEADER32 *optionalHeader) {
+void printOptionalHeader32(const IMAGE_OPTIONAL_HEADER32 *optionalHeader) {
     printf("***********************\n");
     printf("* Optional Header 정보 *\n");
     printf("***********************\n");
@@ -298,6 +337,42 @@ void printOptionalHeader(const IMAGE_OPTIONAL_HEADER32 *optionalHeader) {
     printDataDirectories(optionalHeader->DataDirectory, optionalHeader->NumberOfRvaAndSizes);
 }
 
+void printOptionalHeader64(const IMAGE_OPTIONAL_HEADER64 *optionalHeader) {
+    printf("***********************\n");
+    printf("* Optional Header 정보 (64비트) *\n");
+    printf("***********************\n");
+    printf("Magic                   : %s\n", getMagic(optionalHeader->Magic));
+    printf("MajorLinkerVersion      : %u\n", optionalHeader->MajorLinkerVersion);
+    printf("MinorLinkerVersion      : %u\n", optionalHeader->MinorLinkerVersion);
+    printf("SizeOfCode              : 0x%X\n", optionalHeader->SizeOfCode);
+    printf("SizeOfInitializedData   : 0x%X\n", optionalHeader->SizeOfInitializedData);
+    printf("SizeOfUninitializedData : 0x%X\n", optionalHeader->SizeOfUninitializedData);
+    printf("AddressOfEntryPoint     : 0x%X\n", optionalHeader->AddressOfEntryPoint);
+    printf("BaseOfCode              : 0x%X\n", optionalHeader->BaseOfCode);
+    printf("ImageBase               : 0x%llX\n", (unsigned long long)optionalHeader->ImageBase);
+    printf("SectionAlignment        : 0x%X\n", optionalHeader->SectionAlignment);
+    printf("FileAlignment           : 0x%X\n", optionalHeader->FileAlignment);
+    printf("MajorOperatingSystemVersion: %u\n", optionalHeader->MajorOperatingSystemVersion);
+    printf("MinorOperatingSystemVersion: %u\n", optionalHeader->MinorOperatingSystemVersion);
+    printf("MajorImageVersion       : %u\n", optionalHeader->MajorImageVersion);
+    printf("MinorImageVersion       : %u\n", optionalHeader->MinorImageVersion);
+    printf("MajorSubsystemVersion   : %u\n", optionalHeader->MajorSubsystemVersion);
+    printf("MinorSubsystemVersion   : %u\n", optionalHeader->MinorSubsystemVersion);
+    printf("Win32VersionValue       : %u\n", optionalHeader->Win32VersionValue);
+    printf("SizeOfImage             : 0x%X\n", optionalHeader->SizeOfImage);
+    printf("SizeOfHeaders           : 0x%X\n", optionalHeader->SizeOfHeaders);
+    printf("CheckSum                : 0x%X\n", optionalHeader->CheckSum);
+    printf("Subsystem               : %s\n", getSubsystem(optionalHeader->Subsystem));
+    printDllCharacteristics(optionalHeader->DllCharacteristics);
+    printf("SizeOfStackReserve      : 0x%llX\n", (unsigned long long)optionalHeader->SizeOfStackReserve);
+    printf("SizeOfStackCommit       : 0x%llX\n", (unsigned long long)optionalHeader->SizeOfStackCommit);
+    printf("SizeOfHeapReserve       : 0x%llX\n", (unsigned long long)optionalHeader->SizeOfHeapReserve);
+    printf("SizeOfHeapCommit        : 0x%llX\n", (unsigned long long)optionalHeader->SizeOfHeapCommit);
+    printf("LoaderFlags             : 0x%X\n", optionalHeader->LoaderFlags);
+    printf("NumberOfRvaAndSizes     : %u\n", optionalHeader->NumberOfRvaAndSizes);
+    printDataDirectories(optionalHeader->DataDirectory, optionalHeader->NumberOfRvaAndSizes);
+}
+
 void printNtHeader32(const IMAGE_NT_HEADERS32 *ntHeader) {
     printf("*******************\n");
     printf("* NT Header 정보 *\n");
@@ -306,7 +381,18 @@ void printNtHeader32(const IMAGE_NT_HEADERS32 *ntHeader) {
 
     printFileHeader(&ntHeader->FileHeader);
 
-    printOptionalHeader(&ntHeader->OptionalHeader);
+    printOptionalHeader32(&ntHeader->OptionalHeader);
+}
+
+void printNtHeader64(const IMAGE_NT_HEADERS64 *ntHeader) {
+    printf("*******************\n");
+    printf("* NT Header 정보 *\n");
+    printf("*******************\n");
+    printf("Signature               : 0x%X\n", ntHeader->Signature);
+
+    printFileHeader(&ntHeader->FileHeader);
+
+    printOptionalHeader64(&ntHeader->OptionalHeader);
 }
 
 void printSectionCharacteristics(const uint32_t characteristics) {
