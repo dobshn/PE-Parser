@@ -499,26 +499,91 @@ int main() {
             continue;
         }
 
-        IMAGE_NT_HEADERS32 ntHeaders32;
+        // NT 헤더의 Signature 읽기
         fseek(peFile, dosHeader.e_lfanew, SEEK_SET);
-        if (fread(&ntHeaders32, sizeof(IMAGE_NT_HEADERS32), 1, peFile) != 1 || ntHeaders32.Signature != 0x00004550) {
+        uint32_t signature;
+        fread(&signature, sizeof(signature), 1, peFile);
+        if (signature != 0x00004550) {
             printf("올바르지 않은 NT Header Signature입니다.\n");
             fclose(peFile);
             continue;
         }
 
-        // 분석 시작
-        printDosHeader(&dosHeader);
-        printNtHeader32(&ntHeaders32);
+        // NT 헤더의 File 헤더 읽기
+        IMAGE_FILE_HEADER fileHeader;
+        fread(&fileHeader, sizeof(fileHeader), 1, peFile);
 
-        for (int i = 0; i < ntHeaders32.FileHeader.NumberOfSections; i++) {
-            IMAGE_SECTION_HEADER sectionHeader;
-            if (fread(&sectionHeader, sizeof(IMAGE_SECTION_HEADER), 1, peFile) != 1) {
-                printf("섹션 헤더 읽기 실패.\n");
-                break;
+        // Optional 헤더의 Magic 필드 읽기
+        uint16_t magic;
+        long optHeaderStart = ftell(peFile); // 돌아올 위치 저장
+        if (fread(&magic, sizeof(magic), 1, peFile) != 1) {
+            printf("Optional Header Magic 읽기 실패.\n");
+            fclose(peFile);
+            continue;
+        }
+        fseek(peFile, optHeaderStart, SEEK_SET); // Magic 필드 읽은 후 Optional 헤더 시작점으로 복귀
+
+        // Magic을 통해 분기
+        if (magic == 0x010B) {
+            // PE32
+            IMAGE_NT_HEADERS32 ntHeaders32;
+            ntHeaders32.Signature = signature;
+            ntHeaders32.FileHeader = fileHeader;
+
+            // PE32 OptionalHeader 읽기
+            if (fread(&ntHeaders32.OptionalHeader, fileHeader.SizeOfOptionalHeader, 1, peFile) != 1) {
+                printf("PE32 Optional Header 읽기 실패.\n");
+                fclose(peFile);
+                continue;
             }
-            printSectionHeader(&sectionHeader);
-            printf("\n");
+
+            printDosHeader(&dosHeader);
+            printNtHeader32(&ntHeaders32);
+
+            // 섹션 헤더 읽기
+            for (int i = 0; i < ntHeaders32.FileHeader.NumberOfSections; i++) {
+                IMAGE_SECTION_HEADER sectionHeader;
+                if (fread(&sectionHeader, sizeof(IMAGE_SECTION_HEADER), 1, peFile) != 1) {
+                    printf("섹션 헤더 읽기 실패.\n");
+                    break;
+                }
+                printSectionHeader(&sectionHeader);
+                printf("\n");
+            }
+
+        } else if (magic == 0x020B) {
+            // PE32+
+            IMAGE_NT_HEADERS64 ntHeaders64;
+            ntHeaders64.Signature = signature;
+            ntHeaders64.FileHeader = fileHeader;
+
+            // PE32+ OptionalHeader 읽기
+            IMAGE_OPTIONAL_HEADER64 optionalHeader64;
+            if (fread(&optionalHeader64, fileHeader.SizeOfOptionalHeader, 1, peFile) != 1) {
+                printf("PE32+ Optional Header 읽기 실패.\n");
+                fclose(peFile);
+                continue;
+            }
+            ntHeaders64.OptionalHeader = optionalHeader64;
+
+            printDosHeader(&dosHeader);
+            printNtHeader64(&ntHeaders64);
+
+            // 섹션 헤더 읽기
+            for (int i = 0; i < ntHeaders64.FileHeader.NumberOfSections; i++) {
+                IMAGE_SECTION_HEADER sectionHeader;
+                if (fread(&sectionHeader, sizeof(IMAGE_SECTION_HEADER), 1, peFile) != 1) {
+                    printf("섹션 헤더 읽기 실패.\n");
+                    break;
+                }
+                printSectionHeader(&sectionHeader);
+                printf("\n");
+            }
+
+        } else {
+            printf("알 수 없는 Magic: 0x%X\n", magic);
+            fclose(peFile);
+            continue;
         }
 
         fclose(peFile);
